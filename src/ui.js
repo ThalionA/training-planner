@@ -3,25 +3,8 @@ import { renderCalendar } from './components/Calendar.js';
 import { renderDashboardCharts } from './charts.js';
 
 // --- ELEMENT SELECTORS ---
-const DOMElements = {
-    headerTitle: document.getElementById('header-title'),
-    navButtons: document.querySelectorAll('.nav-item'),
-    views: document.querySelectorAll('.view'),
-    form: document.getElementById('training-form'),
-    sessionIdInput: document.getElementById('session-id'),
-    dateInput: document.getElementById('date'),
-    categorySelect: document.getElementById('category'),
-    subcategorySelect: document.getElementById('subcategory'),
-    dynamicFieldsContainer: document.getElementById('dynamic-fields-container'),
-    wellnessForm: document.getElementById('wellness-form'),
-    modalBackdrop: document.getElementById('modal-backdrop'),
-    wellnessModal: document.getElementById('wellness-modal'),
-    dayDetailModal: document.getElementById('day-detail-modal'),
-    logView: document.getElementById('log-view'),
-    calendarView: document.getElementById('calendar-view'),
-    historyView: document.getElementById('history-view'),
-    dashboardView: document.getElementById('dashboard-view'),
-};
+// We declare the variable here, but we will define it inside initializeUI
+let DOMElements = {};
 
 // --- VIEW MANAGEMENT ---
 export function showAuth() {
@@ -55,18 +38,22 @@ export function switchView(viewId, context = null) {
 
 // --- RENDER FUNCTIONS ---
 function renderLogView(context) {
+    // Check if the form element exists before proceeding
+    if (!DOMElements.form) return;
+
     if (context?.sessionId) {
         DOMElements.headerTitle.textContent = 'Edit Session';
         populateFormForEdit(context.sessionId);
     } else {
         DOMElements.headerTitle.textContent = 'Log Session';
         resetForm();
-        if(context?.date) DOMElements.dateInput.value = context.date;
+        if(context?.date && DOMElements.dateInput) DOMElements.dateInput.value = context.date;
     }
 }
 
 function renderHistoryList() {
     const list = DOMElements.historyView;
+    if (!list) return;
     list.innerHTML = '';
     const allSessions = getSessions();
     if (allSessions.length === 0) {
@@ -96,6 +83,7 @@ function renderHistoryList() {
 
 function renderDashboard() {
     const container = DOMElements.dashboardView;
+    if (!container) return;
     container.innerHTML = ''; 
     const chartCard = createCard('Training Volume (7-Day Moving Average)', `<canvas id="volumeChart"></canvas>`);
     const sleepCard = createCard('Sleep (Last 30 Days)', `<canvas id="sleepChart"></canvas>`);
@@ -107,19 +95,51 @@ function renderDashboard() {
 
 // --- FORM & MODAL LOGIC ---
 export function initializeUI() {
+    // Now we populate the DOMElements object, safely after the DOM has loaded.
+    DOMElements = {
+        headerTitle: document.getElementById('header-title'),
+        navButtons: document.querySelectorAll('.nav-item'),
+        views: document.querySelectorAll('.view'),
+        form: document.getElementById('training-form'),
+        sessionIdInput: document.getElementById('session-id'),
+        dateInput: document.getElementById('date'),
+        categorySelect: document.getElementById('category'),
+        subcategorySelect: document.getElementById('subcategory'),
+        dynamicFieldsContainer: document.getElementById('dynamic-fields-container'),
+        wellnessForm: document.getElementById('wellness-form'),
+        modalBackdrop: document.getElementById('modal-backdrop'),
+        wellnessModal: document.getElementById('wellness-modal'),
+        dayDetailModal: document.getElementById('day-detail-modal'),
+        logView: document.getElementById('log-view'),
+        calendarView: document.getElementById('calendar-view'),
+        historyView: document.getElementById('history-view'),
+        dashboardView: document.getElementById('dashboard-view'),
+    };
+    
+    // Fallback for form to prevent errors if it's not found
+    if (!DOMElements.form) {
+        DOMElements.form = {
+            reset: () => {}, // mock reset function
+            querySelector: () => ({ value: '' }), // mock querySelector
+        };
+    }
+
     populateCategoryDropdown();
 }
 
+
 function resetForm() {
+    if (!DOMElements.form) return;
     DOMElements.form.reset();
-    DOMElements.sessionIdInput.value = '';
-    DOMElements.dateInput.value = new Date().toLocaleDateString('sv-SE');
+    if(DOMElements.sessionIdInput) DOMElements.sessionIdInput.value = '';
+    if(DOMElements.dateInput) DOMElements.dateInput.value = new Date().toLocaleDateString('sv-SE');
     updateSubcategoryDropdown();
     renderDynamicFields(null);
 }
 
 function populateCategoryDropdown() {
     const select = DOMElements.categorySelect;
+    if (!select) return;
     select.innerHTML = '<option value="">Select Category</option>';
     Object.keys(getTrainingConfig()).forEach(cat => {
         select.innerHTML += `<option value="${cat}">${cat}</option>`;
@@ -127,8 +147,9 @@ function populateCategoryDropdown() {
 }
 
 function updateSubcategoryDropdown() {
-    const category = DOMElements.categorySelect.value;
+    const category = DOMElements.categorySelect?.value;
     const select = DOMElements.subcategorySelect;
+    if (!select) return;
     select.innerHTML = '<option value="">Select Sub-category</option>';
     if (category && getTrainingConfig()[category]) {
         Object.keys(getTrainingConfig()[category]).forEach(subcat => {
@@ -139,11 +160,14 @@ function updateSubcategoryDropdown() {
 }
 
 function renderDynamicFields(data) {
-    const category = DOMElements.categorySelect.value;
-    const subcategory = DOMElements.subcategorySelect.value;
+    const category = DOMElements.categorySelect?.value;
+    const subcategory = DOMElements.subcategorySelect?.value;
     const container = DOMElements.dynamicFieldsContainer;
+    if (!container || !category || !subcategory) {
+        if(container) container.innerHTML = '';
+        return;
+    };
     container.innerHTML = '';
-    if (!category || !subcategory) return;
 
     const fieldType = getTrainingConfig()[category][subcategory].type;
     let finalHtml = '';
@@ -196,18 +220,20 @@ function renderDynamicFields(data) {
                         <button type="button" data-action="add-exercise" class="text-sm text-blue-400 hover:text-blue-300">+ Add Exercise</button>`;
             container.innerHTML = finalHtml;
             const list = document.getElementById('exercises-list');
-            (data?.exercises || [{}]).forEach(ex => list.appendChild(createExerciseRow(ex)));
+            if(list) (data?.exercises || [{}]).forEach(ex => list.appendChild(createExerciseRow(ex)));
             return;
         case 'bouldering':
             finalHtml += `<label class="text-sm text-gray-300">Problems per Grade</label><div id="bouldering-grades" class="space-y-2"></div>
                         <button type="button" data-action="add-boulder-grade" class="text-sm text-blue-400 hover:text-blue-300">+ Add Grade</button>`;
             container.innerHTML = finalHtml;
             const gradeList = document.getElementById('bouldering-grades');
-            const grades = data?.grades || {};
-            if (Object.keys(grades).length > 0) {
-                Object.entries(grades).forEach(([grade, count]) => gradeList.appendChild(createBoulderGradeRow(grade, count)));
-            } else {
-                gradeList.appendChild(createBoulderGradeRow());
+            if(gradeList) {
+                const grades = data?.grades || {};
+                if (Object.keys(grades).length > 0) {
+                    Object.entries(grades).forEach(([grade, count]) => gradeList.appendChild(createBoulderGradeRow(grade, count)));
+                } else {
+                    gradeList.appendChild(createBoulderGradeRow());
+                }
             }
             return;
         case 'sport':
@@ -216,7 +242,7 @@ function renderDynamicFields(data) {
                         <button type="button" data-action="add-route" class="text-sm text-blue-400 hover:text-blue-300">+ Add Route</button>`;
             container.innerHTML = finalHtml;
             const routeList = document.getElementById('routes-list');
-            (data?.routes || [{}]).forEach(r => routeList.appendChild(createRouteRow(r)));
+            if(routeList) (data?.routes || [{}]).forEach(r => routeList.appendChild(createRouteRow(r)));
             return;
     }
     container.innerHTML = finalHtml;
@@ -272,18 +298,19 @@ function createRouteRow(data = {}) {
 
 function populateFormForEdit(sessionId) {
     const session = getSessionById(sessionId);
-    if (!session) return;
+    if (!session || !DOMElements.form) return;
     resetForm();
     DOMElements.sessionIdInput.value = session.id;
     DOMElements.dateInput.value = session.date;
     DOMElements.categorySelect.value = session.category;
     updateSubcategoryDropdown();
     
-    // No longer need setTimeout hack
     DOMElements.subcategorySelect.value = session.subcategory;
     renderDynamicFields(session.details);
-    DOMElements.form.querySelector('#details').value = session.generalNotes || '';
-    DOMElements.form.querySelector('#sessionRating').value = session.sessionRating || '';
+    const detailsInput = DOMElements.form.querySelector('#details');
+    const ratingInput = DOMElements.form.querySelector('#sessionRating');
+    if (detailsInput) detailsInput.value = session.generalNotes || '';
+    if (ratingInput) ratingInput.value = session.sessionRating || '';
 }
 
 function createCard(title, contentHTML) {
@@ -297,4 +324,4 @@ function createCard(title, contentHTML) {
     return card;
 }
 
-export { DOMElements, switchView, openModal, closeModal, resetForm, updateSubcategoryDropdown, renderDynamicFields, populateFormForEdit, createExerciseRow, createBoulderGradeRow, createRouteRow, renderHistoryList, renderDashboard };
+export { DOMElements, openModal, closeModal };
