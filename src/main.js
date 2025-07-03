@@ -1,5 +1,5 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-auth.js";
 import { initializeAuth } from './auth.js';
 import { initializeStore, teardownStore } from './store.js';
 import { initializeUI, showAuth, showApp } from './ui.js';

@@ -1,5 +1,5 @@
 import { getFirestore, collection, doc, setDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-firestore.js";
-import { getApp } from "firebase/app";
+import { getApp } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js";
 
 let db;
 let currentUserId;
