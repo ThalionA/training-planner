@@ -9,7 +9,6 @@
 </head>
 <body class="bg-gray-900 text-white">
 
-    <!-- Authentication View -->
     <div id="auth-container" class="container mx-auto max-w-lg h-screen flex-col justify-center p-4">
         <div class="bg-gray-800 p-8 rounded-lg shadow-lg text-center">
             <h1 class="text-3xl font-bold mb-2">Training Planner</h1>
@@ -40,15 +39,12 @@
         </div>
     </div>
 
-    <!-- Main App Container -->
-    <div id="app-container" class="container mx-auto max-w-lg h-screen flex-col">
-        <!-- Header -->
+    <div id="app-container" class="container mx-auto max-w-lg h-screen flex flex-col">
         <header class="p-4 text-center sticky top-0 bg-gray-900 z-10 flex justify-between items-center">
             <h1 id="header-title" class="text-2xl font-bold text-gray-100">Log Session</h1>
             <button data-action="logout" class="text-sm text-gray-300 hover:text-white">Logout</button>
         </header>
 
-        <!-- Main Content Area -->
         <main class="flex-grow p-4 overflow-y-auto">
             <div id="log-view" class="view active"></div>
             <div id="calendar-view" class="view"></div>
@@ -56,7 +52,6 @@
             <div id="dashboard-view" class="view"></div>
         </main>
 
-        <!-- Bottom Navigation -->
         <nav class="bg-gray-800 p-2 shadow-lg rounded-t-xl sticky bottom-0">
             <div class="flex justify-around">
                 <button data-view="log-view" class="nav-item flex flex-col items-center text-gray-300 hover:text-white transition active">
@@ -79,11 +74,45 @@
         </nav>
     </div>
 
-    <!-- Modals -->
     <div id="modal-backdrop" class="hidden fixed inset-0 bg-black bg-opacity-75 z-40"></div>
-    <div id="wellness-modal" role="dialog" aria-modal="true" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4"></div>
-    <div id="day-detail-modal" role="dialog" aria-modal="true" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4"></div>
+    
+    <div id="wellness-modal" role="dialog" aria-modal="true" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 text-left max-w-sm w-full space-y-4">
+            <h3 class="text-lg leading-6 font-medium text-white">Log Daily Wellness</h3>
+            <form id="wellness-form">
+                <input type="hidden" id="wellness-date">
+                <div>
+                    <label for="wellness-sleep" class="block text-sm font-medium text-gray-300">Sleep (hours)</label>
+                    <input type="number" step="0.5" id="wellness-sleep" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md p-3" placeholder="e.g., 7.5">
+                </div>
+                <div class="mt-4">
+                    <label for="wellness-weight" class="block text-sm font-medium text-gray-300">Weight (kg)</label>
+                    <input type="number" step="0.1" id="wellness-weight" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md p-3" placeholder="e.g., 68.5">
+                </div>
+                <div class="mt-4">
+                    <label for="wellness-calories" class="block text-sm font-medium text-gray-300">Calories (kcal)</label>
+                    <input type="number" id="wellness-calories" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md p-3" placeholder="e.g., 2500">
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" data-action="close-modal" class="py-2 px-4 rounded-md text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600">Cancel</button>
+                    <button type="submit" class="py-2 px-4 rounded-md text-sm font-medium text-white bg-teal-600 hover:bg-teal-700">Save Wellness</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-    <script type="module" src="src/main.js"></script>
+    <div id="day-detail-modal" role="dialog" aria-modal="true" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 text-left max-w-sm w-full space-y-4">
+            <div class="flex justify-between items-start">
+                <h3 id="day-detail-title" class="text-lg leading-6 font-medium text-white"></h3>
+                <button data-action="close-modal" class="text-gray-400 hover:text-white text-2xl" aria-label="Close dialog">&times;</button>
+            </div>
+            <div id="day-detail-content" class="space-y-3 max-h-64 overflow-y-auto"></div>
+            <button data-action="add-session-for-date" class="w-full mt-4 py-2 px-4 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">Add New Session</button>
+        </div>
+    </div>
+
+
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html>
