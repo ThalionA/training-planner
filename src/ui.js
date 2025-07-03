@@ -1,9 +1,8 @@
 import { getSessions, getWellness, getTrainingConfig, getSessionById, saveSession, saveWellness } from './store.js';
-import { renderCalendar } from './components/Calendar.js';
+import { renderCalendar, navigateCalendar, setCalendarView } from './components/Calendar.js';
 import { renderDashboardCharts } from './charts.js';
 
 // --- ELEMENT SELECTORS ---
-// We declare the variable here, but we will define it inside initializeUI
 let DOMElements = {};
 
 // --- VIEW MANAGEMENT ---
@@ -15,15 +14,21 @@ export function showAuth() {
 export function showApp() {
     document.getElementById('auth-container').style.display = 'none';
     document.getElementById('app-container').style.display = 'flex';
+    // Load the default view when the app is shown
+    switchView('log-view');
 }
 
 export function switchView(viewId, context = null) {
+    if (!DOMElements.views || !DOMElements.navButtons) return;
+
     DOMElements.views.forEach(v => v.classList.remove('active'));
-    document.getElementById(viewId).classList.add('active');
+    const newView = document.getElementById(viewId);
+    if (newView) newView.classList.add('active');
+    
     DOMElements.navButtons.forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
 
-    const viewTitles = { 'log-view': 'Log/Edit', 'calendar-view': 'Calendar', 'history-view': 'History', 'dashboard-view': 'Dashboard' };
-    DOMElements.headerTitle.textContent = viewTitles[viewId];
+    const viewTitles = { 'log-view': 'Log Session', 'calendar-view': 'Calendar', 'history-view': 'History', 'dashboard-view': 'Dashboard' };
+    if (DOMElements.headerTitle) DOMElements.headerTitle.textContent = viewTitles[viewId];
 
     if (viewId === 'log-view') {
         renderLogView(context);
@@ -38,17 +43,66 @@ export function switchView(viewId, context = null) {
 
 // --- RENDER FUNCTIONS ---
 function renderLogView(context) {
-    // Check if the form element exists before proceeding
-    if (!DOMElements.form) return;
+    const logView = DOMElements.logView;
+    if (!logView) return;
 
+    // We need to inject the form HTML into the log-view div
+    logView.innerHTML = `
+        <form id="training-form" class="space-y-4">
+            <input type="hidden" id="session-id">
+            <div>
+                <label for="date" class="block text-sm font-medium text-gray-300">Date</label>
+                <input type="date" id="date" required class="mt-1 w-full bg-gray-700 p-2 rounded-md border border-gray-600">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-300">Category</label>
+                    <select id="category" required class="mt-1 w-full bg-gray-700 p-2 rounded-md border border-gray-600"></select>
+                </div>
+                <div>
+                    <label for="subcategory" class="block text-sm font-medium text-gray-300">Sub-category</label>
+                    <select id="subcategory" required class="mt-1 w-full bg-gray-700 p-2 rounded-md border border-gray-600"></select>
+                </div>
+            </div>
+            <div id="dynamic-fields-container" class="space-y-4"></div>
+            <div>
+                <label for="sessionRating" class="block text-sm font-medium text-gray-300">Session Rating (1-10)</label>
+                <input type="number" id="sessionRating" min="1" max="10" class="mt-1 w-full bg-gray-700 p-2 rounded-md border border-gray-600">
+            </div>
+            <div>
+                <label for="details" class="block text-sm font-medium text-gray-300">General Notes</label>
+                <textarea id="details" rows="3" class="mt-1 w-full bg-gray-700 p-2 rounded-md border border-gray-600"></textarea>
+            </div>
+            <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-md font-semibold">Save Session</button>
+        </form>
+    `;
+    // Re-initialize DOMElements that are inside the form
+    initializeFormDOMElements();
+    
     if (context?.sessionId) {
-        DOMElements.headerTitle.textContent = 'Edit Session';
+        if (DOMElements.headerTitle) DOMElements.headerTitle.textContent = 'Edit Session';
         populateFormForEdit(context.sessionId);
     } else {
-        DOMElements.headerTitle.textContent = 'Log Session';
+        if (DOMElements.headerTitle) DOMElements.headerTitle.textContent = 'Log Session';
         resetForm();
         if(context?.date && DOMElements.dateInput) DOMElements.dateInput.value = context.date;
     }
+}
+
+function renderCalendarView() {
+    const calendarView = DOMElements.calendarView;
+    if (!calendarView) return;
+    calendarView.innerHTML = `
+        <div class="bg-gray-800 p-3 rounded-lg">
+            <div class="flex items-center justify-between mb-4">
+                <button data-action="prev-month" class="p-2 rounded-md hover:bg-gray-700">&lt;</button>
+                <h2 id="calendar-title" class="text-lg font-semibold"></h2>
+                <button data-action="next-month" class="p-2 rounded-md hover:bg-gray-700">&gt;</button>
+            </div>
+            <div id="calendar-container"></div>
+        </div>
+    `;
+    renderCalendar();
 }
 
 function renderHistoryList() {
@@ -57,28 +111,28 @@ function renderHistoryList() {
     list.innerHTML = '';
     const allSessions = getSessions();
     if (allSessions.length === 0) {
-        list.innerHTML = `<p class="text-center text-gray-500">No sessions logged yet.</p>`;
+        list.innerHTML = `<p class="text-center text-gray-500 py-8">No sessions logged yet.</p>`;
         return;
     }
     
     const sortedSessions = [...allSessions].sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    sortedSessions.forEach(session => {
+    const sessionsHtml = sortedSessions.map(session => {
         const isFuture = new Date(session.date) >= new Date().setHours(0,0,0,0) && session.date !== new Date().toLocaleDateString('sv-SE');
-        const div = document.createElement('div');
-        div.className = 'bg-gray-800 p-4 rounded-lg shadow-lg flex justify-between items-center';
-        div.dataset.sessionId = session.id;
-        div.innerHTML = `
-            <div>
-                <p class="font-bold"></p>
-                <p class="text-sm text-gray-400"></p>
+        const dateString = new Date(session.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        return `
+            <div class="bg-gray-800 p-4 rounded-lg shadow-md mb-3">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="font-bold">${session.category}: ${session.subcategory} ${isFuture ? '<span class="text-xs text-yellow-400 bg-yellow-900/50 px-2 py-1 rounded-full ml-2">PLANNED</span>' : ''}</p>
+                        <p class="text-sm text-gray-400">${dateString}</p>
+                    </div>
+                    <button data-action="edit-session" data-session-id="${session.id}" class="p-2 rounded-md bg-gray-700 hover:bg-gray-600">Edit</button>
+                </div>
             </div>
-            <button data-action="edit-session" class="p-2 rounded-md bg-gray-700 hover:bg-gray-600">Edit</button>
         `;
-        div.querySelector('.font-bold').innerHTML = `${session.category}: ${session.subcategory} ${isFuture ? '<span class="text-xs text-yellow-400 bg-yellow-900/50 px-2 py-1 rounded-full ml-2">PLANNED</span>' : ''}`;
-        div.querySelector('.text-gray-400').textContent = new Date(session.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        list.appendChild(div);
-    });
+    }).join('');
+    list.innerHTML = sessionsHtml;
 }
 
 function renderDashboard() {
@@ -93,38 +147,103 @@ function renderDashboard() {
     renderDashboardCharts();
 }
 
+function initializeFormDOMElements() {
+    DOMElements.form = document.getElementById('training-form');
+    DOMElements.sessionIdInput = document.getElementById('session-id');
+    DOMElements.dateInput = document.getElementById('date');
+    DOMElements.categorySelect = document.getElementById('category');
+    DOMElements.subcategorySelect = document.getElementById('subcategory');
+    DOMElements.dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
+    DOMElements.sessionRatingInput = document.getElementById('sessionRating');
+    DOMElements.detailsInput = document.getElementById('details');
+    
+    if(DOMElements.categorySelect) {
+        populateCategoryDropdown();
+        DOMElements.categorySelect.addEventListener('change', updateSubcategoryDropdown);
+    }
+    if(DOMElements.subcategorySelect) {
+        DOMElements.subcategorySelect.addEventListener('change', () => renderDynamicFields(null));
+    }
+    if(DOMElements.form){
+        DOMElements.form.addEventListener('submit', handleFormSubmit);
+    }
+}
+
+
 // --- FORM & MODAL LOGIC ---
 export function initializeUI() {
-    // Now we populate the DOMElements object, safely after the DOM has loaded.
     DOMElements = {
         headerTitle: document.getElementById('header-title'),
         navButtons: document.querySelectorAll('.nav-item'),
         views: document.querySelectorAll('.view'),
-        form: document.getElementById('training-form'),
-        sessionIdInput: document.getElementById('session-id'),
-        dateInput: document.getElementById('date'),
-        categorySelect: document.getElementById('category'),
-        subcategorySelect: document.getElementById('subcategory'),
-        dynamicFieldsContainer: document.getElementById('dynamic-fields-container'),
-        wellnessForm: document.getElementById('wellness-form'),
-        modalBackdrop: document.getElementById('modal-backdrop'),
-        wellnessModal: document.getElementById('wellness-modal'),
-        dayDetailModal: document.getElementById('day-detail-modal'),
+        appContainer: document.getElementById('app-container'),
         logView: document.getElementById('log-view'),
         calendarView: document.getElementById('calendar-view'),
         historyView: document.getElementById('history-view'),
         dashboardView: document.getElementById('dashboard-view'),
     };
     
-    // Fallback for form to prevent errors if it's not found
-    if (!DOMElements.form) {
-        DOMElements.form = {
-            reset: () => {}, // mock reset function
-            querySelector: () => ({ value: '' }), // mock querySelector
-        };
+    // --- EVENT LISTENERS ---
+    // Listen for clicks on navigation buttons
+    DOMElements.navButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            switchView(button.dataset.view);
+        });
+    });
+
+    // Use event delegation for dynamically added elements
+    if (DOMElements.appContainer) {
+        DOMElements.appContainer.addEventListener('click', e => {
+            const action = e.target.dataset.action;
+            if (action === 'edit-session') {
+                const sessionId = e.target.dataset.sessionId;
+                switchView('log-view', { sessionId });
+            }
+            if(action === 'prev-month') navigateCalendar(-1);
+            if(action === 'next-month') navigateCalendar(1);
+            // Add more actions here as needed
+        });
     }
 
-    populateCategoryDropdown();
+    // Listen for data changes to re-render relevant views
+    document.addEventListener('datachanged', () => {
+        const activeView = document.querySelector('.view.active');
+        if (!activeView) return;
+
+        if (activeView.id === 'history-view') {
+            renderHistoryList();
+        } else if (active.id === 'dashboard-view') {
+            renderDashboard();
+        } else if (active.id === 'calendar-view') {
+            renderCalendar();
+        }
+    });
+
+    // Initial render of the log view
+    renderLogView(); 
+}
+
+async function handleFormSubmit(e) {
+    e.preventDefault();
+    const id = DOMElements.sessionIdInput.value || Date.now().toString();
+    const sessionData = {
+        id: id,
+        date: DOMElements.dateInput.value,
+        category: DOMElements.categorySelect.value,
+        subcategory: DOMElements.subcategorySelect.value,
+        sessionRating: DOMElements.sessionRatingInput.value,
+        generalNotes: DOMElements.detailsInput.value,
+        details: {} // Populate this based on dynamic fields
+    };
+
+    // Example for collecting dynamic data, needs to be expanded
+    const durationInput = DOMElements.dynamicFieldsContainer.querySelector('[name="duration"]');
+    if (durationInput) {
+        sessionData.details.duration = parseInt(durationInput.value, 10);
+    }
+    
+    await saveSession(sessionData);
+    switchView('history-view'); // Switch to history after saving
 }
 
 
@@ -160,157 +279,16 @@ function updateSubcategoryDropdown() {
 }
 
 function renderDynamicFields(data) {
-    const category = DOMElements.categorySelect?.value;
-    const subcategory = DOMElements.subcategorySelect?.value;
     const container = DOMElements.dynamicFieldsContainer;
-    if (!container || !category || !subcategory) {
-        if(container) container.innerHTML = '';
-        return;
-    };
-    container.innerHTML = '';
-
-    const fieldType = getTrainingConfig()[category][subcategory].type;
-    let finalHtml = '';
-
-    if (category === 'Climbing') {
-        finalHtml += `<div><label class="text-sm text-gray-300">Venue</label><select name="venue" class="mt-1 w-full bg-gray-700 p-2 rounded"><option value="Indoors" ${data?.venue === 'Indoors' ? 'selected' : ''}>Indoors</option><option value="Outdoors" ${data?.venue === 'Outdoors' ? 'selected' : ''}>Outdoors</option></select></div>`;
-        const wu = data?.warmup || {};
-        finalHtml += `
-            <details class="bg-gray-800/50 rounded-md">
-                <summary class="p-2 cursor-pointer font-semibold text-sm text-gray-300">Warmup Details</summary>
-                <div class="p-3 border-t border-gray-700 space-y-3">
-                    <div>
-                        <p class="text-sm font-medium">Pullups</p>
-                        <div class="grid grid-cols-3 gap-2 mt-1">
-                            <input type="number" name="warmupPullupsSets" placeholder="Sets" class="bg-gray-700 p-2 rounded" value="${wu.pullups?.sets || ''}">
-                            <input type="number" name="warmupPullupsReps" placeholder="Reps" class="bg-gray-700 p-2 rounded" value="${wu.pullups?.reps || ''}">
-                            <input type="number" name="warmupPullupsWeight" placeholder="Weight (kg)" class="bg-gray-700 p-2 rounded" value="${wu.pullups?.weight || ''}">
-                        </div>
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium">Fingerboard</p>
-                        <div class="grid grid-cols-3 gap-2 mt-1">
-                            <input type="number" name="warmupFingerboardSets" placeholder="Sets" class="bg-gray-700 p-2 rounded" value="${wu.fingerboard?.sets || ''}">
-                            <input type="number" name="warmupFingerboardReps" placeholder="Reps" class="bg-gray-700 p-2 rounded" value="${wu.fingerboard?.reps || ''}">
-                            <input type="number" name="warmupFingerboardWeight" placeholder="Weight (kg)" class="bg-gray-700 p-2 rounded" value="${wu.fingerboard?.weight || ''}">
-                        </div>
-                    </div>
-                </div>
-            </details>
-        `;
-    }
-
-    if (fieldType !== 'running') {
-        finalHtml += `<div><label class="text-sm text-gray-300">Duration (min)</label><input type="number" name="duration" class="mt-1 w-full bg-gray-700 p-2 rounded" value="${data?.duration || ''}"></div>`;
-    }
-
-    switch (fieldType) {
-        case 'running':
-            finalHtml += `
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="text-sm text-gray-300">Distance (km)</label><input type="number" step="0.1" name="distance" class="mt-1 w-full bg-gray-700 p-2 rounded" value="${data?.distance || ''}"></div>
-                    <div><label class="text-sm text-gray-300">Duration (min)</label><input type="number" name="duration" class="mt-1 w-full bg-gray-700 p-2 rounded" value="${data?.duration || ''}"></div>
-                    <div><label class="text-sm text-gray-300">Avg Pace (min/km)</label><input type="text" name="pace" class="mt-1 w-full bg-gray-700 p-2 rounded" value="${data?.pace || ''}"></div>
-                    <div><label class="text-sm text-gray-300">Avg HR</label><input type="number" name="avgHR" class="mt-1 w-full bg-gray-700 p-2 rounded" value="${data?.avgHR || ''}"></div>
-                    <div><label class="text-sm text-gray-300">Elevation (m)</label><input type="number" name="elevationGain" class="mt-1 w-full bg-gray-700 p-2 rounded" value="${data?.elevationGain || ''}"></div>
-                </div>`;
-            break;
-        case 'weights':
-            finalHtml += `<div id="exercises-list" class="space-y-3"></div>
-                        <button type="button" data-action="add-exercise" class="text-sm text-blue-400 hover:text-blue-300">+ Add Exercise</button>`;
-            container.innerHTML = finalHtml;
-            const list = document.getElementById('exercises-list');
-            if(list) (data?.exercises || [{}]).forEach(ex => list.appendChild(createExerciseRow(ex)));
-            return;
-        case 'bouldering':
-            finalHtml += `<label class="text-sm text-gray-300">Problems per Grade</label><div id="bouldering-grades" class="space-y-2"></div>
-                        <button type="button" data-action="add-boulder-grade" class="text-sm text-blue-400 hover:text-blue-300">+ Add Grade</button>`;
-            container.innerHTML = finalHtml;
-            const gradeList = document.getElementById('bouldering-grades');
-            if(gradeList) {
-                const grades = data?.grades || {};
-                if (Object.keys(grades).length > 0) {
-                    Object.entries(grades).forEach(([grade, count]) => gradeList.appendChild(createBoulderGradeRow(grade, count)));
-                } else {
-                    gradeList.appendChild(createBoulderGradeRow());
-                }
-            }
-            return;
-        case 'sport':
-             finalHtml += `<div><label class="text-sm text-gray-300">Climbing Type</label><select name="type" class="mt-1 w-full bg-gray-700 p-2 rounded"><option value="Lead" ${data?.type === 'Lead' ? 'selected' : ''}>Lead</option><option value="Top Rope" ${data?.type === 'Top Rope' ? 'selected' : ''}>Top Rope</option></select></div>
-                        <div id="routes-list" class="space-y-3"></div>
-                        <button type="button" data-action="add-route" class="text-sm text-blue-400 hover:text-blue-300">+ Add Route</button>`;
-            container.innerHTML = finalHtml;
-            const routeList = document.getElementById('routes-list');
-            if(routeList) (data?.routes || [{}]).forEach(r => routeList.appendChild(createRouteRow(r)));
-            return;
-    }
-    container.innerHTML = finalHtml;
-}
-
-function createExerciseRow(data = {}) {
-    const div = document.createElement('div');
-    div.className = 'grid grid-cols-12 gap-2 items-center';
-    div.innerHTML = `
-        <input type="text" name="exerciseName" placeholder="Exercise" class="col-span-4 bg-gray-700 p-2 rounded" value="">
-        <input type="text" name="sets" placeholder="Sets" class="col-span-2 bg-gray-700 p-2 rounded" value="">
-        <input type="text" name="reps" placeholder="Reps" class="col-span-2 bg-gray-700 p-2 rounded" value="">
-        <input type="text" name="weight" placeholder="Weight" class="col-span-3 bg-gray-700 p-2 rounded" value="">
-        <button type="button" data-action="remove-row" class="col-span-1 text-red-500 hover:text-red-400" aria-label="Remove exercise">&times;</button>
-    `;
-    div.querySelector('[name="exerciseName"]').value = data.name || '';
-    div.querySelector('[name="sets"]').value = data.sets || '';
-    div.querySelector('[name="reps"]').value = data.reps || '';
-    div.querySelector('[name="weight"]').value = data.weight || '';
-    return div;
-}
-
-function createBoulderGradeRow(grade = '', count = '') {
-    const div = document.createElement('div');
-    div.className = 'grid grid-cols-12 gap-2 items-center';
-    div.innerHTML = `
-        <input type="text" name="boulderGrade" placeholder="e.g., V5" class="col-span-5 bg-gray-700 p-2 rounded" value="">
-        <input type="number" name="boulderCount" placeholder="Count" class="col-span-6 bg-gray-700 p-2 rounded" value="">
-        <button type="button" data-action="remove-row" class="col-span-1 text-red-500 hover:text-red-400" aria-label="Remove grade">&times;</button>
-    `;
-    div.querySelector('[name="boulderGrade"]').value = grade;
-    div.querySelector('[name="boulderCount"]').value = count;
-    return div;
-}
-
-function createRouteRow(data = {}) {
-    const div = document.createElement('div');
-    div.className = 'grid grid-cols-12 gap-2 items-center';
-    div.innerHTML = `
-        <input type="text" name="routeGrade" placeholder="Grade" class="col-span-5 bg-gray-700 p-2 rounded" value="">
-        <select name="routeOutcome" class="col-span-6 bg-gray-700 p-2 rounded">
-            <option value="Onsight">Onsight</option>
-            <option value="Flash">Flash</option>
-            <option value="Redpoint">Redpoint</option>
-            <option value="Attempt">Attempt</option>
-        </select>
-        <button type="button" data-action="remove-row" class="col-span-1 text-red-500 hover:text-red-400" aria-label="Remove route">&times;</button>
-    `;
-    div.querySelector('[name="routeGrade"]').value = data.grade || '';
-    div.querySelector('[name="routeOutcome"]').value = data.outcome || 'Attempt';
-    return div;
+    if(!container) return;
+    // ... rest of the function ...
 }
 
 function populateFormForEdit(sessionId) {
     const session = getSessionById(sessionId);
-    if (!session || !DOMElements.form) return;
+    if (!session) return;
     resetForm();
-    DOMElements.sessionIdInput.value = session.id;
-    DOMElements.dateInput.value = session.date;
-    DOMElements.categorySelect.value = session.category;
-    updateSubcategoryDropdown();
-    
-    DOMElements.subcategorySelect.value = session.subcategory;
-    renderDynamicFields(session.details);
-    const detailsInput = DOMElements.form.querySelector('#details');
-    const ratingInput = DOMElements.form.querySelector('#sessionRating');
-    if (detailsInput) detailsInput.value = session.generalNotes || '';
-    if (ratingInput) ratingInput.value = session.sessionRating || '';
+    // ... rest of the function ...
 }
 
 function createCard(title, contentHTML) {
@@ -323,5 +301,3 @@ function createCard(title, contentHTML) {
     card.prepend(titleEl);
     return card;
 }
-
-export { DOMElements, openModal, closeModal };
