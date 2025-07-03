@@ -1,34 +1,53 @@
-import { getSessions } from '../store.js';
+import { getSessions, getWellness } from '../store.js';
 
 let currentCalendarDate = new Date();
 let currentCalendarView = 'month';
 
-const DOMElements = {
-    calendarContainer: document.getElementById('calendar-container'),
-    calendarTitle: document.getElementById('calendar-title'),
-};
+// Helper function to safely get the DOM elements when needed.
+function getCalendarDOMElements() {
+    return {
+        calendarContainer: document.getElementById('calendar-container'),
+        calendarTitle: document.getElementById('calendar-title'),
+    };
+}
 
 export function navigateCalendar(direction) {
-    if (currentCalendarView === 'month') currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
-    else if (currentCalendarView === 'week') currentCalendarDate.setDate(currentCalendarDate.getDate() + (7 * direction));
-    else if (currentCalendarView === 'day') currentCalendarDate.setDate(currentCalendarDate.getDate() + direction);
+    if (currentCalendarView === 'month') {
+        currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+    } else if (currentCalendarView === 'week') {
+        currentCalendarDate.setDate(currentCalendarDate.getDate() + (7 * direction));
+    } else if (currentCalendarView === 'day') {
+        currentCalendarDate.setDate(currentCalendarDate.getDate() + direction);
+    }
     renderCalendar();
 }
 
 export function setCalendarView(viewType) {
     currentCalendarView = viewType;
+    // This part can stay as it modifies elements that are always present when this function is called
     document.querySelectorAll('.calendar-view-btn').forEach(b => b.classList.remove('active'));
     document.querySelector(`[data-view-type="${viewType}"]`).classList.add('active');
     renderCalendar();
 }
 
 export function renderCalendar() {
-    if (currentCalendarView === 'month') renderMonthView();
-    else if (currentCalendarView === 'week') renderWeekView();
-    else if (currentCalendarView === 'day') renderDayView();
+    const DOMElements = getCalendarDOMElements();
+    // A "guard clause" to ensure the elements exist before we try to use them.
+    if (!DOMElements.calendarContainer || !DOMElements.calendarTitle) {
+        console.error("Calendar container or title not found in the DOM.");
+        return;
+    }
+
+    if (currentCalendarView === 'month') {
+        renderMonthView(DOMElements);
+    } else if (currentCalendarView === 'week') {
+        renderWeekView(DOMElements);
+    } else if (currentCalendarView === 'day') {
+        renderDayView(DOMElements);
+    }
 }
 
-function renderMonthView() {
+function renderMonthView(DOMElements) {
     const container = DOMElements.calendarContainer;
     container.innerHTML = '';
     const year = currentCalendarDate.getFullYear();
@@ -37,7 +56,7 @@ function renderMonthView() {
 
     const grid = document.createElement('div');
     grid.className = 'grid grid-cols-7 gap-1 text-center';
-    
+
     ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
         const dayEl = document.createElement('div');
         dayEl.className = 'font-bold text-gray-400 text-sm';
@@ -56,7 +75,7 @@ function renderMonthView() {
         const dateStr = new Date(year, month, day).toLocaleDateString('sv-SE');
         const daySessions = getSessions().filter(s => s.date === dateStr);
         const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
-        
+
         const dayEl = document.createElement('div');
         dayEl.className = `calendar-day-month-view border border-gray-700 rounded-md p-1 flex flex-col cursor-pointer hover:bg-gray-700 ${isToday ? 'bg-blue-900/50' : ''}`;
         dayEl.dataset.action = 'open-day-detail';
@@ -83,7 +102,7 @@ function renderMonthView() {
     container.appendChild(grid);
 }
 
-function renderWeekView() {
+function renderWeekView(DOMElements) {
     const container = DOMElements.calendarContainer;
     container.innerHTML = '';
     const year = currentCalendarDate.getFullYear();
@@ -93,9 +112,9 @@ function renderWeekView() {
 
     const startOfWeek = new Date(year, month, day - dayOfWeek);
     const endOfWeek = new Date(year, month, day - dayOfWeek + 6);
-    
+
     DOMElements.calendarTitle.textContent = `${startOfWeek.toLocaleDateString(undefined, {month:'short', day:'numeric'})} - ${endOfWeek.toLocaleDateString(undefined, {month:'short', day:'numeric'})}`;
-    
+
     const grid = document.createElement('div');
     grid.className = 'space-y-2';
 
@@ -118,7 +137,7 @@ function renderWeekView() {
 
         const sessionsContainer = document.createElement('div');
         sessionsContainer.className = 'mt-2 space-y-2';
-        
+
         if (daySessions.length > 0) {
             daySessions.forEach(session => {
                 const colors = { Climbing: 'bg-blue-500', Weights: 'bg-red-500', Running: 'bg-green-500', Other: 'bg-gray-400' };
@@ -140,7 +159,7 @@ function renderWeekView() {
     container.appendChild(grid);
 }
 
-function renderDayView() {
+function renderDayView(DOMElements) {
     const container = DOMElements.calendarContainer;
     container.innerHTML = '';
     DOMElements.calendarTitle.textContent = currentCalendarDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -148,7 +167,7 @@ function renderDayView() {
 
     const daySessions = getSessions().filter(s => s.date === dateStr);
     const wellness = getWellness().find(w => w.date === dateStr);
-    
+
     const dayContainer = document.createElement('div');
     dayContainer.className = 'space-y-4';
 
@@ -189,7 +208,7 @@ function renderDayView() {
     } else {
         dayContainer.innerHTML += `<p class="text-center text-gray-500 py-8">No sessions logged for this day.</p>`;
     }
-    
+
     const addButton = document.createElement('button');
     addButton.dataset.action = 'add-session-for-date';
     addButton.dataset.date = dateStr;
