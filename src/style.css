@@ -1,0 +1,41 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+body { 
+    font-family: 'Inter', sans-serif; 
+}
+.view { 
+    display: none; 
+}
+.view.active { 
+    display: block; 
+}
+.nav-item.active svg, .nav-item.active span { 
+    color: #3b82f6; 
+}
+.calendar-day-month-view { 
+    min-height: 80px; 
+}
+.calendar-day-month-view.other-month { 
+    background-color: #1f2937; /* bg-gray-800 */
+}
+.session-dot { 
+    width: 6px; 
+    height: 6px; 
+    border-radius: 50%; 
+    display: inline-block; 
+}
+.calendar-view-btn.active { 
+    background-color: #3b82f6; 
+    color: white; 
+}
+details > summary { 
+    list-style: none; 
+}
+details > summary::-webkit-details-marker { 
+    display: none; 
+}
+#app-container, #auth-container {
+    display: none;
+}

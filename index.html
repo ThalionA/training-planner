@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Training Planner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/style.css">
+</head>
+<body class="bg-gray-900 text-white">
+
+    <!-- Authentication View -->
+    <div id="auth-container" class="container mx-auto max-w-lg h-screen flex-col justify-center p-4">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-lg text-center">
+            <h1 class="text-3xl font-bold mb-2">Training Planner</h1>
+            <p class="text-gray-400 mb-6">Log in to continue</p>
+            <div id="auth-view-login">
+                <form id="login-form" class="space-y-4">
+                    <input type="email" id="login-email" placeholder="Email" required class="w-full bg-gray-700 p-3 rounded-md border border-gray-600">
+                    <input type="password" id="login-password" placeholder="Password" required class="w-full bg-gray-700 p-3 rounded-md border border-gray-600">
+                    <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-md font-semibold">Log In</button>
+                </form>
+                <p id="login-error" class="text-red-500 text-sm mt-2"></p>
+                <div class="my-4 text-gray-500">or</div>
+                <button id="google-signin-btn" class="w-full py-3 bg-white text-gray-800 rounded-md font-semibold flex items-center justify-center gap-2 hover:bg-gray-200">
+                    <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#4285F4" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#34A853" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#FBBC05" d="M27.58 45.92l-6.571-4.819C19.044 42.902 14.968 44 12 44c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#EA4335" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path></svg>
+                    Sign in with Google
+                </button>
+                <p class="mt-6 text-sm">Don't have an account? <button id="show-signup-btn" class="font-semibold text-blue-400 hover:underline">Sign Up</button></p>
+            </div>
+            <div id="auth-view-signup" class="hidden">
+                <form id="signup-form" class="space-y-4">
+                    <input type="email" id="signup-email" placeholder="Email" required class="w-full bg-gray-700 p-3 rounded-md border border-gray-600">
+                    <input type="password" id="signup-password" placeholder="Password" required class="w-full bg-gray-700 p-3 rounded-md border border-gray-600">
+                    <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-md font-semibold">Sign Up</button>
+                </form>
+                <p id="signup-error" class="text-red-500 text-sm mt-2"></p>
+                <p class="mt-6 text-sm">Already have an account? <button id="show-login-btn" class="font-semibold text-blue-400 hover:underline">Log In</button></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-container" class="container mx-auto max-w-lg h-screen flex-col">
+        <!-- Header -->
+        <header class="p-4 text-center sticky top-0 bg-gray-900 z-10 flex justify-between items-center">
+            <h1 id="header-title" class="text-2xl font-bold text-gray-100">Log Session</h1>
+            <button data-action="logout" class="text-sm text-gray-300 hover:text-white">Logout</button>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-grow p-4 overflow-y-auto">
+            <div id="log-view" class="view active"></div>
+            <div id="calendar-view" class="view"></div>
+            <div id="history-view" class="view"></div>
+            <div id="dashboard-view" class="view"></div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bg-gray-800 p-2 shadow-lg rounded-t-xl sticky bottom-0">
+            <div class="flex justify-around">
+                <button data-view="log-view" class="nav-item flex flex-col items-center text-gray-300 hover:text-white transition active">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    <span class="text-xs">Log</span>
+                </button>
+                <button data-view="calendar-view" class="nav-item flex flex-col items-center text-gray-300 hover:text-white transition">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <span class="text-xs">Calendar</span>
+                </button>
+                <button data-view="history-view" class="nav-item flex flex-col items-center text-gray-300 hover:text-white transition">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v11.494m-9-5.747h18" /></svg>
+                    <span class="text-xs">History</span>
+                </button>
+                <button data-view="dashboard-view" class="nav-item flex flex-col items-center text-gray-300 hover:text-white transition">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6M9 19a2 2 0 00-2 2h10a2 2 0 00-2-2M9 19V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    <span class="text-xs">Dashboard</span>
+                </button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-backdrop" class="hidden fixed inset-0 bg-black bg-opacity-75 z-40"></div>
+    <div id="wellness-modal" role="dialog" aria-modal="true" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4"></div>
+    <div id="day-detail-modal" role="dialog" aria-modal="true" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4"></div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
